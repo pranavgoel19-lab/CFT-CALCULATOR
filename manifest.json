@@ -1,0 +1,19 @@
+{
+  "name": "CFT Calculator",
+  "short_name": "CFT Calc",
+  "description": "Timber log & bundle CFT calculator with WhatsApp sharing",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#faf7f3",
+  "theme_color": "#8B4513",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

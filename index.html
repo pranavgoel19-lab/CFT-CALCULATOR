@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#8B4513">
+<title>CFT Calculator</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <input id="businessName" class="business-name" placeholder="Your Business Name" />
+    <div class="topbar-sub">CFT Calculator</div>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="card">
+    <h2 class="card-title">Add Log / Bundle</h2>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="width">Width (inches)</label>
+        <input id="width" type="number" inputmode="decimal" placeholder="e.g. 12" min="0" step="any">
+      </div>
+      <div class="field">
+        <label for="thickness">Thickness (inches)</label>
+        <input id="thickness" type="number" inputmode="decimal" placeholder="e.g. 10" min="0" step="any">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field field-grow">
+        <label for="length">Length</label>
+        <input id="length" type="number" inputmode="decimal" placeholder="e.g. 8" min="0" step="any">
+      </div>
+      <div class="field">
+        <label>Length Unit</label>
+        <div class="toggle" id="lengthUnitToggle">
+          <button type="button" class="toggle-btn active" data-unit="ft">Feet</button>
+          <button type="button" class="toggle-btn" data-unit="in">Inches</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="piecesPerBundle">Pieces per Bundle</label>
+        <input id="piecesPerBundle" type="number" inputmode="numeric" placeholder="1" min="1" step="1" value="1">
+      </div>
+      <div class="field">
+        <label for="bundles">No. of Bundles</label>
+        <input id="bundles" type="number" inputmode="numeric" placeholder="1" min="1" step="1" value="1">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="note">Note (optional)</label>
+      <input id="note" type="text" placeholder="e.g. Teak, Lot 3">
+    </div>
+
+    <div class="live-preview" id="livePreview">Enter dimensions to see CFT</div>
+
+    <button id="addBtn" class="btn btn-primary btn-block">+ Add to List</button>
+  </section>
+
+  <section class="card">
+    <div class="card-title-row">
+      <h2 class="card-title">Entries</h2>
+      <button id="clearAllBtn" class="btn-link">Clear All</button>
+    </div>
+    <div id="entryList" class="entry-list">
+      <div class="empty-state" id="emptyState">No entries yet. Add a log or bundle above.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="totalbar">
+  <div class="totalbar-inner">
+    <div class="total-label">Total CFT</div>
+    <div class="total-value" id="totalValue">0.00</div>
+  </div>
+  <div class="totalbar-actions">
+    <div id="partyNameWrap" class="party-wrap">
+      <input id="partyName" type="text" placeholder="Party / Customer name (optional)">
+    </div>
+    <button id="shareBtn" class="btn btn-whatsapp btn-block">Share via WhatsApp</button>
+  </div>
+</footer>
+
+<canvas id="renderCanvas" style="display:none;"></canvas>
+
+<script src="app.js"></script>
+</body>
+</html>
