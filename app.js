@@ -13,12 +13,17 @@
     piecesPerBundle: document.getElementById("piecesPerBundle"),
     bundles: document.getElementById("bundles"),
     note: document.getElementById("note"),
+    noteToggle: document.getElementById("noteToggle"),
+    noteField: document.getElementById("noteField"),
     livePreview: document.getElementById("livePreview"),
     addBtn: document.getElementById("addBtn"),
-    entryList: document.getElementById("entryList"),
+    entryTable: document.getElementById("entryTable"),
+    entryTableBody: document.getElementById("entryTableBody"),
     emptyState: document.getElementById("emptyState"),
     clearAllBtn: document.getElementById("clearAllBtn"),
     totalValue: document.getElementById("totalValue"),
+    totalPcs: document.getElementById("totalPcs"),
+    totalBundles: document.getElementById("totalBundles"),
     partyName: document.getElementById("partyName"),
     shareBtn: document.getElementById("shareBtn"),
     renderCanvas: document.getElementById("renderCanvas"),
@@ -107,6 +112,14 @@
     els[id].addEventListener("input", updateLivePreview);
   });
 
+  // ---------- note toggle ----------
+  els.noteToggle.addEventListener("click", function () {
+    var show = els.noteField.hidden;
+    els.noteField.hidden = !show;
+    els.noteToggle.textContent = show ? "− Hide note" : "+ Add note";
+    if (show) els.note.focus();
+  });
+
   // ---------- add entry ----------
   els.addBtn.addEventListener("click", function () {
     var v = readFormValues();
@@ -131,15 +144,15 @@
     saveEntries();
     renderEntries();
 
-    // reset form (keep unit toggle as-is for faster repeat entry)
-    els.width.value = "";
-    els.thickness.value = "";
+    // reset form for the next entry — width & thickness carry over since a
+    // worker typically measures many logs of the same stock before the
+    // dimensions change, only length/pieces/bundles/note vary per log
     els.length.value = "";
     els.piecesPerBundle.value = "1";
     els.bundles.value = "1";
     els.note.value = "";
     updateLivePreview();
-    els.width.focus();
+    els.length.focus();
   });
 
   // ---------- clear all ----------
@@ -152,43 +165,40 @@
   });
 
   // ---------- render entries ----------
-  function describeEntry(e) {
-    var dims = e.width + '"×' + e.thickness + '"×' + e.length + (e.lengthUnit === "in" ? '"' : "'");
-    var totalPieces = e.piecesPerBundle * e.bundles;
-    var pieceDesc;
-    if (e.bundles > 1) {
-      pieceDesc = e.piecesPerBundle + " pcs/bundle × " + e.bundles + " bundles = " + totalPieces + " pcs";
-    } else {
-      pieceDesc = totalPieces + " pc" + (totalPieces > 1 ? "s" : "");
-    }
-    return { dims: dims, pieceDesc: pieceDesc };
+  function lengthLabel(e) {
+    return e.length + (e.lengthUnit === "in" ? '"' : "'");
   }
 
   function renderEntries() {
-    els.entryList.innerHTML = "";
-    if (!state.entries.length) {
-      els.entryList.appendChild(els.emptyState);
-      els.emptyState.style.display = "";
-    } else {
-      state.entries.forEach(function (e) {
-        var d = describeEntry(e);
-        var row = document.createElement("div");
-        row.className = "entry";
-        row.innerHTML =
-          '<div class="entry-info">' +
-            '<div class="entry-dims">' + d.dims + "</div>" +
-            '<div class="entry-detail">' + d.pieceDesc + "</div>" +
-            (e.note ? '<div class="entry-note">' + escapeHtml(e.note) + "</div>" : "") +
-          "</div>" +
-          '<div class="entry-cft">' + fmt(e.cft) + '<br><span style="font-size:10px;font-weight:600;color:var(--muted);">CFT</span></div>' +
-          '<button class="entry-delete" data-id="' + e.id + '" aria-label="Delete">×</button>';
-        els.entryList.appendChild(row);
-      });
-    }
+    els.entryTableBody.innerHTML = "";
+    els.entryTable.style.display = state.entries.length ? "" : "none";
+    els.emptyState.style.display = state.entries.length ? "none" : "";
+
+    state.entries.forEach(function (e, idx) {
+      var row = document.createElement("tr");
+      row.innerHTML =
+        "<td>" + (idx + 1) + "</td>" +
+        "<td>" + e.width + '"</td>' +
+        "<td>" + e.thickness + '"</td>' +
+        "<td>" + lengthLabel(e) + "</td>" +
+        "<td>" + e.piecesPerBundle + "</td>" +
+        "<td>" + e.bundles + "</td>" +
+        '<td class="col-cft">' + fmt(e.cft) + "</td>" +
+        '<td><button class="entry-delete" data-id="' + e.id + '" aria-label="Delete">×</button></td>';
+      els.entryTableBody.appendChild(row);
+
+      if (e.note) {
+        var noteRow = document.createElement("tr");
+        noteRow.className = "entry-note-row";
+        noteRow.innerHTML = '<td colspan="8" class="col-note">' + escapeHtml(e.note) + "</td>";
+        els.entryTableBody.appendChild(noteRow);
+      }
+    });
+
     updateTotal();
   }
 
-  els.entryList.addEventListener("click", function (e) {
+  els.entryTableBody.addEventListener("click", function (e) {
     var btn = e.target.closest(".entry-delete");
     if (!btn) return;
     var id = btn.getAttribute("data-id");
@@ -198,8 +208,12 @@
   });
 
   function updateTotal() {
-    var total = state.entries.reduce(function (sum, e) { return sum + e.cft; }, 0);
-    els.totalValue.textContent = fmt(total);
+    var totalCft = state.entries.reduce(function (sum, e) { return sum + e.cft; }, 0);
+    var totalPcs = state.entries.reduce(function (sum, e) { return sum + e.piecesPerBundle * e.bundles; }, 0);
+    var totalBundles = state.entries.reduce(function (sum, e) { return sum + e.bundles; }, 0);
+    els.totalValue.textContent = fmt(totalCft);
+    els.totalPcs.textContent = totalPcs;
+    els.totalBundles.textContent = totalBundles;
     els.shareBtn.disabled = state.entries.length === 0;
   }
 
@@ -278,11 +292,15 @@
   function buildSummaryCanvas() {
     var scale = 2; // crisp on high-dpi screens
     var width = 720;
-    var rowHeight = 74;
+    var rowHeight = 44;
+    var noteRowHeight = 24;
+    var noteRows = state.entries.filter(function (e) { return e.note; }).length;
     var headerHeight = 150;
     var partyHeight = els.partyName.value.trim() ? 40 : 0;
-    var footerHeight = 110;
-    var height = headerHeight + partyHeight + state.entries.length * rowHeight + footerHeight;
+    var colHeaderHeight = 34;
+    var footerHeight = 130;
+    var height = headerHeight + partyHeight + colHeaderHeight +
+      state.entries.length * rowHeight + noteRows * noteRowHeight + footerHeight;
 
     var canvas = els.renderCanvas;
     canvas.width = width * scale;
@@ -337,20 +355,32 @@
       y += partyHeight;
     }
 
-    // column headers
+    // column layout: # | W | T | L | Pcs | Bdl | CFT
+    var cols = [
+      { key: "#", x: 20, align: "left" },
+      { key: "W", x: 230, align: "right" },
+      { key: "T", x: 310, align: "right" },
+      { key: "L", x: 400, align: "right" },
+      { key: "PCS", x: 480, align: "right" },
+      { key: "BDL", x: 560, align: "right" },
+      { key: "CFT", x: width - 28, align: "right" },
+    ];
+
     ctx.fillStyle = "#f0e4d6";
-    ctx.fillRect(0, y, width, 34);
+    ctx.fillRect(0, y, width, colHeaderHeight);
     ctx.fillStyle = woodDark;
     ctx.font = "bold 13px Arial";
-    ctx.fillText("#", 20, y + 22);
+    ctx.textAlign = "left";
+    ctx.fillText(cols[0].key, cols[0].x, y + 22);
     ctx.fillText("DIMENSIONS (W x T x L)", 55, y + 22);
-    ctx.fillText("PIECES", 430, y + 22);
-    ctx.fillText("CFT", 630, y + 22);
-    y += 34;
+    cols.slice(1).forEach(function (c) {
+      ctx.textAlign = c.align;
+      ctx.fillText(c.key, c.x, y + 22);
+    });
+    ctx.textAlign = "left";
+    y += colHeaderHeight;
 
-    ctx.font = "16px Arial";
     state.entries.forEach(function (e, idx) {
-      var d = describeEntry(e);
       if (idx % 2 === 0) {
         ctx.fillStyle = stripe;
         ctx.fillRect(0, y, width, rowHeight);
@@ -358,65 +388,69 @@
       ctx.fillStyle = border;
       ctx.fillRect(0, y + rowHeight - 1, width, 1);
 
+      var midY = y + rowHeight / 2 + 6;
       ctx.fillStyle = ink;
-      ctx.font = "bold 13px Arial";
-      ctx.fillText(String(idx + 1), 20, y + 30);
-
-      ctx.font = "bold 19px Arial";
-      ctx.fillText(d.dims, 55, y + 30);
       ctx.font = "13px Arial";
-      ctx.fillStyle = muted;
-      if (e.note) ctx.fillText(e.note, 55, y + 52);
+      ctx.textAlign = "left";
+      ctx.fillText(String(idx + 1), cols[0].x, midY);
 
-      ctx.fillStyle = ink;
-      ctx.font = "14px Arial";
-      wrapText(ctx, d.pieceDesc, 430, y + 30, 180, 18);
+      ctx.font = "bold 17px Arial";
+      ctx.fillText(e.width + '"×' + e.thickness + '"×' + lengthLabel(e), 55, midY);
+
+      ctx.font = "15px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText(String(e.piecesPerBundle), cols[4].x, midY);
+      ctx.fillText(String(e.bundles), cols[5].x, midY);
 
       ctx.fillStyle = woodDark;
-      ctx.font = "bold 20px Arial";
-      ctx.fillText(fmt(e.cft), 630, y + 34);
+      ctx.font = "bold 17px Arial";
+      ctx.fillText(fmt(e.cft), cols[6].x, midY);
+      ctx.textAlign = "left";
 
       y += rowHeight;
+
+      if (e.note) {
+        ctx.fillStyle = muted;
+        ctx.font = "italic 13px Arial";
+        ctx.fillText(e.note, 55, y + 16);
+        y += noteRowHeight;
+      }
     });
 
     // total band
-    var total = state.entries.reduce(function (sum, e) { return sum + e.cft; }, 0);
+    var totalCft = state.entries.reduce(function (sum, e) { return sum + e.cft; }, 0);
+    var totalPcs = state.entries.reduce(function (sum, e) { return sum + e.piecesPerBundle * e.bundles; }, 0);
+    var totalBundles = state.entries.reduce(function (sum, e) { return sum + e.bundles; }, 0);
+
     ctx.fillStyle = wood;
     ctx.fillRect(0, y, width, footerHeight);
+
     ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha = 0.85;
+    ctx.font = "bold 14px Arial";
+    ctx.fillText("TOTAL PIECES", 28, y + 32);
+    ctx.fillText("TOTAL BUNDLES", 28, y + 62);
     ctx.font = "bold 22px Arial";
-    ctx.fillText("TOTAL CFT", 28, y + 45);
-    ctx.font = "bold 46px Arial";
+    ctx.globalAlpha = 1;
+    ctx.fillText(String(totalPcs), 190, y + 34);
+    ctx.fillText(String(totalBundles), 190, y + 64);
+
+    ctx.font = "bold 20px Arial";
+    ctx.globalAlpha = 0.85;
     ctx.textAlign = "right";
-    ctx.fillText(fmt(total), width - 28, y + 55);
+    ctx.fillText("TOTAL CFT", width - 28, y + 40);
+    ctx.font = "bold 44px Arial";
+    ctx.globalAlpha = 1;
+    ctx.fillText(fmt(totalCft), width - 28, y + 82);
     ctx.textAlign = "left";
 
     ctx.fillStyle = "#ffffff";
     ctx.globalAlpha = 0.8;
     ctx.font = "12px Arial";
-    ctx.fillText("Generated with CFT Calculator", 28, y + footerHeight - 16);
+    ctx.fillText("Generated with CFT Calculator", 28, y + footerHeight - 14);
     ctx.globalAlpha = 1;
 
     return canvas;
-  }
-
-  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-    var words = text.split(" ");
-    var line = "";
-    var lines = [];
-    for (var i = 0; i < words.length; i++) {
-      var testLine = line + words[i] + " ";
-      if (ctx.measureText(testLine).width > maxWidth && line) {
-        lines.push(line);
-        line = words[i] + " ";
-      } else {
-        line = testLine;
-      }
-    }
-    lines.push(line);
-    lines.forEach(function (l, i) {
-      ctx.fillText(l.trim(), x, y + i * lineHeight - (lines.length - 1) * (lineHeight / 2));
-    });
   }
 
   // ---------- init ----------

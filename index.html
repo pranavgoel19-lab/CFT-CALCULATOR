@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
 <meta name="theme-color" content="#8B4513">
 <title>CFT Calculator</title>
 <link rel="manifest" href="manifest.json">
@@ -21,37 +21,32 @@
 
 <main class="container">
 
-  <section class="card">
-    <h2 class="card-title">Add Log / Bundle</h2>
-
-    <div class="field-row">
-      <div class="field">
-        <label for="width">Width (inches)</label>
-        <input id="width" type="number" inputmode="decimal" placeholder="e.g. 12" min="0" step="any">
+  <section class="card add-card">
+    <div class="dims-row">
+      <div class="field field-sm">
+        <label for="width">W (in)</label>
+        <input id="width" type="number" inputmode="decimal" placeholder="W" min="0" step="any">
       </div>
-      <div class="field">
-        <label for="thickness">Thickness (inches)</label>
-        <input id="thickness" type="number" inputmode="decimal" placeholder="e.g. 10" min="0" step="any">
+      <div class="field field-sm">
+        <label for="thickness">T (in)</label>
+        <input id="thickness" type="number" inputmode="decimal" placeholder="T" min="0" step="any">
       </div>
-    </div>
-
-    <div class="field-row">
-      <div class="field field-grow">
+      <div class="field field-sm field-grow">
         <label for="length">Length</label>
-        <input id="length" type="number" inputmode="decimal" placeholder="e.g. 8" min="0" step="any">
+        <input id="length" type="number" inputmode="decimal" placeholder="L" min="0" step="any">
       </div>
-      <div class="field">
-        <label>Length Unit</label>
-        <div class="toggle" id="lengthUnitToggle">
-          <button type="button" class="toggle-btn active" data-unit="ft">Feet</button>
-          <button type="button" class="toggle-btn" data-unit="in">Inches</button>
+      <div class="field field-unit">
+        <label>&nbsp;</label>
+        <div class="toggle toggle-compact" id="lengthUnitToggle">
+          <button type="button" class="toggle-btn active" data-unit="ft">ft</button>
+          <button type="button" class="toggle-btn" data-unit="in">in</button>
         </div>
       </div>
     </div>
 
-    <div class="field-row">
+    <div class="dims-row">
       <div class="field">
-        <label for="piecesPerBundle">Pieces per Bundle</label>
+        <label for="piecesPerBundle">Pcs / Bundle</label>
         <input id="piecesPerBundle" type="number" inputmode="numeric" placeholder="1" min="1" step="1" value="1">
       </div>
       <div class="field">
@@ -60,8 +55,8 @@
       </div>
     </div>
 
-    <div class="field">
-      <label for="note">Note (optional)</label>
+    <button type="button" id="noteToggle" class="btn-link-small">+ Add note</button>
+    <div class="field note-field" id="noteField" hidden>
       <input id="note" type="text" placeholder="e.g. Teak, Lot 3">
     </div>
 
@@ -70,12 +65,27 @@
     <button id="addBtn" class="btn btn-primary btn-block">+ Add to List</button>
   </section>
 
-  <section class="card">
+  <section class="card table-card">
     <div class="card-title-row">
       <h2 class="card-title">Entries</h2>
       <button id="clearAllBtn" class="btn-link">Clear All</button>
     </div>
-    <div id="entryList" class="entry-list">
+    <div class="table-wrap">
+      <table class="entry-table" id="entryTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>W</th>
+            <th>T</th>
+            <th>L</th>
+            <th>Pcs</th>
+            <th>Bdl</th>
+            <th>CFT</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="entryTableBody"></tbody>
+      </table>
       <div class="empty-state" id="emptyState">No entries yet. Add a log or bundle above.</div>
     </div>
   </section>
@@ -83,9 +93,19 @@
 </main>
 
 <footer class="totalbar">
-  <div class="totalbar-inner">
-    <div class="total-label">Total CFT</div>
-    <div class="total-value" id="totalValue">0.00</div>
+  <div class="totalbar-stats">
+    <div class="stat">
+      <div class="stat-label">Total Pcs</div>
+      <div class="stat-value" id="totalPcs">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Bundles</div>
+      <div class="stat-value" id="totalBundles">0</div>
+    </div>
+    <div class="stat stat-cft">
+      <div class="stat-label">Total CFT</div>
+      <div class="stat-value stat-cft-value" id="totalValue">0.00</div>
+    </div>
   </div>
   <div class="totalbar-actions">
     <div id="partyNameWrap" class="party-wrap">
