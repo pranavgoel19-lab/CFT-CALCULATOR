@@ -1,4 +1,4 @@
-var CACHE_NAME = "cft-calc-v1";
+var CACHE_NAME = "cft-calc-v2";
 var ASSETS = [
   "./",
   "./index.html",
@@ -28,24 +28,22 @@ self.addEventListener("activate", function (event) {
   self.clients.claim();
 });
 
+// Network-first: always fetch the latest deployed files when online, so the
+// app updates immediately after every deploy. Cache is only a fallback for
+// when the phone is offline (e.g. no signal on the yard/warehouse floor).
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      return (
-        cached ||
-        fetch(event.request)
-          .then(function (response) {
-            var copy = response.clone();
-            caches.open(CACHE_NAME).then(function (cache) {
-              cache.put(event.request, copy);
-            });
-            return response;
-          })
-          .catch(function () {
-            return cached;
-          })
-      );
-    })
+    fetch(event.request)
+      .then(function (response) {
+        var copy = response.clone();
+        caches.open(CACHE_NAME).then(function (cache) {
+          cache.put(event.request, copy);
+        });
+        return response;
+      })
+      .catch(function () {
+        return caches.match(event.request);
+      })
   );
 });
