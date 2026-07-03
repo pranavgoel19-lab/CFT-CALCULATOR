@@ -148,8 +148,8 @@
     // worker typically measures many logs of the same stock before the
     // dimensions change, only length/pieces/bundles/note vary per log
     els.length.value = "";
-    els.piecesPerBundle.value = "1";
-    els.bundles.value = "1";
+    els.piecesPerBundle.value = "";
+    els.bundles.value = "";
     els.note.value = "";
     updateLivePreview();
     els.length.focus();
@@ -355,38 +355,38 @@
       y += partyHeight;
     }
 
-    // column layout: # | W | T | L | Pcs | Bdl | CFT
+    // column layout: # | W | T | L | Pcs | Bdl | CFT — grid edges define 7 columns
+    var edges = [16, 60, 195, 330, 460, 550, 620, width - 16];
     var cols = [
-      { key: "#", x: 20, align: "left" },
-      { key: "W", x: 230, align: "right" },
-      { key: "T", x: 310, align: "right" },
-      { key: "L", x: 400, align: "right" },
-      { key: "PCS", x: 480, align: "right" },
-      { key: "BDL", x: 560, align: "right" },
-      { key: "CFT", x: width - 28, align: "right" },
+      { key: "#", x: edges[0] + 8, align: "left" },
+      { key: "W", x: edges[2] - 10, align: "right" },
+      { key: "T", x: edges[3] - 10, align: "right" },
+      { key: "L", x: edges[4] - 10, align: "right" },
+      { key: "PCS", x: edges[5] - 10, align: "right" },
+      { key: "BDL", x: edges[6] - 10, align: "right" },
+      { key: "CFT", x: edges[7] - 10, align: "right" },
     ];
+
+    var headerTop = y;
 
     ctx.fillStyle = "#f0e4d6";
     ctx.fillRect(0, y, width, colHeaderHeight);
     ctx.fillStyle = woodDark;
     ctx.font = "bold 13px Arial";
-    ctx.textAlign = "left";
-    ctx.fillText(cols[0].key, cols[0].x, y + 22);
-    ctx.fillText("DIMENSIONS (W x T x L)", 55, y + 22);
-    cols.slice(1).forEach(function (c) {
+    cols.forEach(function (c) {
       ctx.textAlign = c.align;
       ctx.fillText(c.key, c.x, y + 22);
     });
     ctx.textAlign = "left";
     y += colHeaderHeight;
 
+    var rowSegments = [{ top: headerTop, bottom: y }]; // header row grid segment
+
     state.entries.forEach(function (e, idx) {
       if (idx % 2 === 0) {
         ctx.fillStyle = stripe;
         ctx.fillRect(0, y, width, rowHeight);
       }
-      ctx.fillStyle = border;
-      ctx.fillRect(0, y + rowHeight - 1, width, 1);
 
       var midY = y + rowHeight / 2 + 6;
       ctx.fillStyle = ink;
@@ -394,11 +394,13 @@
       ctx.textAlign = "left";
       ctx.fillText(String(idx + 1), cols[0].x, midY);
 
-      ctx.font = "bold 17px Arial";
-      ctx.fillText(e.width + '"×' + e.thickness + '"×' + lengthLabel(e), 55, midY);
+      ctx.font = "bold 16px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText(e.width + '"', cols[1].x, midY);
+      ctx.fillText(e.thickness + '"', cols[2].x, midY);
+      ctx.fillText(lengthLabel(e), cols[3].x, midY);
 
       ctx.font = "15px Arial";
-      ctx.textAlign = "right";
       ctx.fillText(String(e.piecesPerBundle), cols[4].x, midY);
       ctx.fillText(String(e.bundles), cols[5].x, midY);
 
@@ -407,15 +409,44 @@
       ctx.fillText(fmt(e.cft), cols[6].x, midY);
       ctx.textAlign = "left";
 
+      rowSegments.push({ top: y, bottom: y + rowHeight });
       y += rowHeight;
 
       if (e.note) {
         ctx.fillStyle = muted;
         ctx.font = "italic 13px Arial";
-        ctx.fillText(e.note, 55, y + 16);
+        ctx.fillText("Note: " + e.note, edges[0] + 8, y + 16);
         y += noteRowHeight;
       }
     });
+
+    var gridBottom = y;
+
+    // grid lines — vertical dividers only across header/data rows, skipping note rows
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    edges.forEach(function (ex) {
+      rowSegments.forEach(function (seg) {
+        ctx.beginPath();
+        ctx.moveTo(ex + 0.5, seg.top);
+        ctx.lineTo(ex + 0.5, seg.bottom);
+        ctx.stroke();
+      });
+    });
+    // horizontal rules between every row (including header)
+    rowSegments.forEach(function (seg) {
+      ctx.beginPath();
+      ctx.moveTo(0, seg.bottom + 0.5);
+      ctx.lineTo(width, seg.bottom + 0.5);
+      ctx.stroke();
+    });
+    ctx.beginPath();
+    ctx.moveTo(0, headerTop + 0.5);
+    ctx.lineTo(width, headerTop + 0.5);
+    ctx.stroke();
+    ctx.strokeStyle = woodDark;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0.75, headerTop + 0.75, width - 1.5, gridBottom - headerTop - 1.5);
 
     // total band
     var totalCft = state.entries.reduce(function (sum, e) { return sum + e.cft; }, 0);
